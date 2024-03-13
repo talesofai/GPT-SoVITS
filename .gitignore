@@ -15,3 +15,6 @@ ffmpeg.exe
 ffprobe.exe
 tmp_audio
 trained
+venv/
+*.mp3
+*.wav

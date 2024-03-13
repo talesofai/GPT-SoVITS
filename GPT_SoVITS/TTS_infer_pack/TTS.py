@@ -205,16 +205,15 @@ class TTS:
                                             self.bert_tokenizer, 
                                             self.configs.device)
         
-        
         self.prompt_cache:dict = {
-            "ref_audio_path" : None,
-            "prompt_semantic": None,
-            "refer_spec"     : None,
-            "prompt_text"    : None,
-            "prompt_lang"    : None,
-            "phones"         : None,
-            "bert_features"  : None,
-            "norm_text"      : None,
+            "ref_audio_path":None,
+            "prompt_semantic":None,     # 放进显存里面
+            "refer_spepc":None,
+            "prompt_text":None,
+            "prompt_lang":None,
+            "phones":None,
+            "bert_features":None,
+            "norm_text":None,
         }
         
         
@@ -286,7 +285,7 @@ class TTS:
         self.configs.t2s_weights_path = weights_path
         self.configs.save_configs()
         self.configs.hz = 50
-        dict_s1 = torch.load(weights_path, map_location=self.configs.device)
+        dict_s1 = torch.load(weights_path, map_location=self.configs.device,mmap=True)
         config = dict_s1["config"]
         self.configs.max_sec = config["data"]["max_sec"]
         t2s_model = Text2SemanticLightningModule(config, "****", is_train=False, 
@@ -664,7 +663,9 @@ class TTS:
                 self.prompt_cache["phones"] = phones
                 self.prompt_cache["bert_features"] = bert_features
                 self.prompt_cache["norm_text"] = norm_text
-
+                print("miss cache")
+                
+        
         ###### text preprocessing ########
         t1 = ttime()
         data:list = None
@@ -826,7 +827,9 @@ class TTS:
                     return
 
             if not return_fragment:
-                print("%.3f\t%.3f\t%.3f\t%.3f" % (t1 - t0, t2 - t1, t_34, t_45))
+                end_time = ttime()
+                total_time = end_time - t0
+                print("文本预处理耗时: %.4f s\t批处理和分桶处理耗时: %.4f s\t模型推理耗时: %.4f s\t音频后处理耗时: %.4f s\t总处理时间: %.4f s" % ((t1 - t0), (t2 - t1), t_34, t_45, total_time))
                 yield self.audio_postprocess(audio, 
                                                 self.configs.sampling_rate, 
                                                 batch_index_list, 
