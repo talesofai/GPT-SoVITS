@@ -14,11 +14,10 @@ text_box = gr.inputs.Textbox(lines=5, label="输入文本（不能为空）")
 # 定义角色选择框组件
 names = list_models()
 role_selector = gr.inputs.Dropdown(choices=list_models(),default=list_models()[0], label="选择角色")
-text_language = gr.Dropdown(label="需要合成的语种", choices=['zh','en','ja','auto'], default='auto')
+text_language = gr.inputs.Dropdown(label="需要合成的语种", choices=['zh','en','ja','auto'], default='auto')
 
 def generate_audio(text, language, role):
     start_time = time.time()  # 记录函数开始时间
-    
     audio = generate_voice(model=role, text=text, text_language=language)
     end_time = time.time()  # 记录函数结束时间
     file_path = os.path.join(f"/tmp/", f"{uuid.uuid4()}.mp3")
