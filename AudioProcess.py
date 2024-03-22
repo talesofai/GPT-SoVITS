@@ -172,6 +172,15 @@ def normalize_string(input_string:str) -> str:
 
     return normalized_string
 
+def remove_brackets_content(text):
+    # 定义一个正则表达式模式，匹配英文和中文括号及其内部内容
+    pattern = r'[\(（][^\)）]*[\)）]'
+    
+    # 使用sub()函数替换匹配到的内容为空字符串
+    result = re.sub(pattern, '', text)
+    
+    return result
+
 def generate_voice(model, text, text_language) -> bytes:
     """
     合成文本为音频
@@ -180,11 +189,20 @@ def generate_voice(model, text, text_language) -> bytes:
         raise ValueError(f"Invalid model name {model}.")
     model_info = model_infos[model]
 
+    # 将括号内的内容静默处理
+    text = remove_brackets_content(text)
+    
     # 将文本规范化
     text = normalize_string(text)
+    
+    # 将句子的前面加上句号来缓解吞字和复读问题
+    if text_language=='zh':
+        text = f"。{text}"
+    else:
+        text = f".{text}"
 
     # 切换/加载模型
-    tts_pipline.init_t2s_weights(model_info.gpt_path)
+    tts_pipline.init_t2s_weights(model_info.gapt_path)
     tts_pipline.init_vits_weights(model_info.sovits_path)
     
     # 正式推理之前预处理参考文本
@@ -213,7 +231,7 @@ if __name__ == "__main__":
     os.makedirs(output_folder,exist_ok=True)
     for model_name in model_names:
         # 合成音频
-        text = "Hello。我｜‘；们要、吃「」蛋【】糕了～不过I think得@#¥%&*（）————+...还是由你来切吧~～"
+        text = "这是一个(包含括号的)示例字符串，（中文括号里面的内容）将会被删除。Hello。我｜‘；们要、吃「」蛋【】糕了～不过I think得@#¥%&*（）————+...还是由你来切吧~～"
         text_language = "auto"
         audio_bytes = generate_voice(
             model=model_name, text=text, text_language=text_language)

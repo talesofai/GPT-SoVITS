@@ -14,7 +14,9 @@ from vr import AudioPre, AudioPreDeEcho
 
 weight_uvr5_root = "tools/uvr5/uvr5_weights"
 uvr5_names = []
+print(f"uvr5 weights folder: {weight_uvr5_root}")
 for name in os.listdir(weight_uvr5_root):
+    print(f"found model name: {name}")
     if name.endswith(".pth") or "onnx" in name:
         uvr5_names.append(name.replace(".pth", ""))
 
