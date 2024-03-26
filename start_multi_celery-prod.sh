@@ -4,13 +4,13 @@
 export PROD=true
 
 # 从网盘加载模型
-MODEL_FOLDER=/root/autodl-fs/wys_data/gpt_sovits/models/
+export MODEL_FOLDER=/root/autodl-fs/wys_data/gpt_sovits/models/
 
 # 数组用于存储PID
 pids=()
 
 # 启动6个实例并记录PID
-for i in {1..3}; do
+for i in {1..2}; do
   celery -A AudioProcessCeleryWorker worker -l WARNING -c 1 --pool=solo -Q GPTSoVits &
   pids+=($!)
 done

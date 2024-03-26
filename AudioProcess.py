@@ -3,6 +3,7 @@ from io import BytesIO
 import json
 import logging
 import re
+import numpy as np
 import torch
 import soundfile as sf
 import os
@@ -142,7 +143,7 @@ def inference(text,
         "top_k": 5,  # GPT配置部分硬编码
         "top_p": 1,
         "temperature": 1,
-        "text_split_method": 'cut0',    # 不切直接放进显存里,长句可能会爆炸
+        "text_split_method": 'cut5',    # 不切直接放进显存里,长句可能会爆炸
         "batch_size": batch_size,        # 需要详细测试下不同的batch_size对于性能的影响
         "speed_factor": 1.0,
         "split_bucket": False,            # 数据分桶会降低计算量,太短的句子提升不明显
@@ -161,6 +162,7 @@ def normalize_string(input_string:str) -> str:
     
     # 替换 !! 和 ... 为 ,
     normalized_string = re.sub(r'!', '.', normalized_string)
+    normalized_string = re.sub(r'！', '.', normalized_string)
     normalized_string = re.sub(r'~', '.', normalized_string)
     normalized_string = re.sub(r'～', '.', normalized_string)
     normalized_string = re.sub(r'\.\.+', ',', normalized_string)
@@ -195,14 +197,14 @@ def generate_voice(model, text, text_language) -> bytes:
     # 将文本规范化
     text = normalize_string(text)
     
-    # 将句子的前面加上句号来缓解吞字和复读问题
-    if text_language=='zh':
-        text = f"。{text}"
-    else:
-        text = f".{text}"
+    # # 将句子的前面加上句号来缓解吞字和复读问题
+    # if text_language=='zh':
+    #     text = f"。{text}"
+    # else:
+    #     text = f".{text}"
 
     # 切换/加载模型
-    tts_pipline.init_t2s_weights(model_info.gapt_path)
+    tts_pipline.init_t2s_weights(model_info.gpt_path)
     tts_pipline.init_vits_weights(model_info.sovits_path)
     
     # 正式推理之前预处理参考文本
@@ -231,8 +233,9 @@ if __name__ == "__main__":
     os.makedirs(output_folder,exist_ok=True)
     for model_name in model_names:
         # 合成音频
-        text = "这是一个(包含括号的)示例字符串，（中文括号里面的内容）将会被删除。Hello。我｜‘；们要、吃「」蛋【】糕了～不过I think得@#¥%&*（）————+...还是由你来切吧~～"
-        text_language = "auto"
+        # text = "这是一个(包含括号的)示例字符串，（中文括号里面的内容）将会被删除。Hello。我｜‘；们要、吃「」蛋【】糕了～不过I think得@#¥%&*（）————+...还是由你来切吧~～"
+        text = "作为(标)读心神探，我要开始寻找犯人和宝贝了！穿上这身专业的神探造型，我看似小孩，但我的推理能力可不是玩具！"
+        text_language = "zh"
         audio_bytes = generate_voice(
             model=model_name, text=text, text_language=text_language)
         # 保存在本地

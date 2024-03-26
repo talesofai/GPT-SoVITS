@@ -6,6 +6,7 @@ rm -f GPT_weights/*
 # 删除SoVITS_weights文件夹下的所有文件
 rm -f SoVITS_weights/*
 
+# 删除预处理文件
 rm -rf logs/*
 
 # 删除output文件夹下的所有文件（不包括文件夹）

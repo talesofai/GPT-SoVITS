@@ -3,8 +3,10 @@
 # 数组用于存储PID
 pids=()
 
+export MODEL_FOLDER=/root/autodl-fs/wys_data/gpt_sovits/models/
+
 # 启动6个实例并记录PID
-for i in {1..3}; do
+for i in {1..2}; do
   celery -A AudioProcessCeleryWorker worker -l WARNING -c 1 --pool=solo -Q GPTSoVits &
   pids+=($!)
 done
