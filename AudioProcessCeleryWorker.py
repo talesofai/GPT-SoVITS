@@ -19,9 +19,11 @@ celery_app = make_celery()
 # 获取全部角色信息
 model_names = list_models()
 
+
 class TaskResult(pydantic.BaseModel):
     code: int
     message: str
+
 
 @celery_app.task(name="gpt_sovits_generate_voice", bind=True, time_limit=20)
 def celery_generate_voice(self, speaker_name: str, text: str, language: str):
@@ -38,21 +40,29 @@ def celery_generate_voice(self, speaker_name: str, text: str, language: str):
 
     # 增加speaker_name的检测逻辑
     if not isinstance(speaker_name, str) or len(speaker_name) == 0:
-        return TaskResult(code=400, message="Invalid speaker name provided").model_dump()
+        return TaskResult(
+            code=400, message="Invalid speaker name provided"
+        ).model_dump()
 
     if speaker_name not in model_names:
-        return TaskResult(code=404, message=f"Not found {speaker_name}.pls choise one from {model_names}").model_dump()
+        return TaskResult(
+            code=404,
+            message=f"Not found {speaker_name}.pls choise one from {model_names}",
+        ).model_dump()
 
     # 增加language检测逻辑，只允许 ja|zh|en|auto 这四种情况
-    if language not in ["ja", "zh", "en",'auto']:
-        language = 'auto'
+    if language not in ["ja", "zh", "en", "auto"]:
+        language = "auto"
     # 合成音频
     try:
         audio_bytes = generate_voice(
-            model=speaker_name, text=text, text_language=language)
+            model=speaker_name, text=text, text_language=language
+        )
         return audio_bytes
     except Exception as e:
-        return TaskResult(code=500, message=f"Failed to generate voice: {str(e)}").model_dump()
+        return TaskResult(
+            code=500, message=f"Failed to generate voice: {str(e)}"
+        ).model_dump()
 
 
 @celery_app.task(name="gpt_sovits_support_voice_info", bind=True, time_limit=20)

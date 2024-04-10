@@ -21,8 +21,8 @@ restart_instances() {
     kill -0 "$pid" 2>/dev/null
     if [ $? -ne 0 ]; then
       echo "Restarting instance with PID: $pid"
-      celery -A AudioProcessCeleryWorker worker -l WARNING -c 1 --pool=solo -Q GPTSoVits  &
-      pids=("${pids[@]/$pid}")
+      celery -A AudioProcessCeleryWorker worker -l WARNING -c 1 --pool=solo -Q GPTSoVits &
+      pids=("${pids[@]/$pid/}")
       pids+=($!)
     fi
   done

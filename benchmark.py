@@ -10,6 +10,7 @@ import time
 import sys
 import random
 from typing import Dict, List
+
 now_dir = os.getcwd()
 sys.path.append(now_dir)
 sys.path.append(os.path.join(now_dir, "GPT_SoVITS"))
@@ -29,7 +30,7 @@ if "_CUDA_VISIBLE_DEVICES" in os.environ:
     os.environ["CUDA_VISIBLE_DEVICES"] = os.environ["_CUDA_VISIBLE_DEVICES"]
 # 只在cuda12.1版本及以上启用flash_attn
 cuda_version = torch.version.cuda
-major_version, minor_version = map(int, cuda_version.split('.')[:2])
+major_version, minor_version = map(int, cuda_version.split(".")[:2])
 
 flash_attn_enabled = False
 if major_version > 12 or (major_version == 12 and minor_version >= 1):
@@ -45,41 +46,43 @@ default_config = {
     "vits_weights_path": "GPT_SoVITS/pretrained_models/s2G488k.pth",
     "cnhuhbert_base_path": "GPT_SoVITS/pretrained_models/chinese-hubert-base",
     "bert_base_path": "GPT_SoVITS/pretrained_models/chinese-roberta-wwm-ext-large",
-    "flash_attn_enabled": flash_attn_enabled
+    "flash_attn_enabled": flash_attn_enabled,
 }
 
 tts_config = TTS_Config({"default": default_config, "custom": default_config})
 tts_config.device = device
 tts_config.is_half = True
-tts_pipline = TTS(tts_config)       # 初始化批处理
+tts_pipline = TTS(tts_config)  # 初始化批处理
 gpt_path = tts_config.t2s_weights_path
 sovits_path = tts_config.vits_weights_path
 
-# 推理
-def inference(text,
-              text_lang,
-              ref_audio_path,
-              prompt_text,
-              prompt_lang,
-              batch_size,
-              ):
 
+# 推理
+def inference(
+    text,
+    text_lang,
+    ref_audio_path,
+    prompt_text,
+    prompt_lang,
+    batch_size,
+):
     inputs = {
         "text": text,
         "text_lang": text_lang,
         "ref_audio_path": ref_audio_path,
-        "prompt_text": prompt_text,     # 必定有参考音频的文本
+        "prompt_text": prompt_text,  # 必定有参考音频的文本
         "prompt_lang": prompt_lang,
         "top_k": 5,  # GPT配置部分硬编码
         "top_p": 1,
         "temperature": 1,
-        "text_split_method": 'cut0',    # 不切直接放进显存里,长句可能会爆炸
-        "batch_size": batch_size,        # 需要详细测试下不同的batch_size对于性能的影响
+        "text_split_method": "cut0",  # 不切直接放进显存里,长句可能会爆炸
+        "batch_size": batch_size,  # 需要详细测试下不同的batch_size对于性能的影响
         "speed_factor": 1.0,
-        "split_bucket": False,            # 数据分桶会降低计算量,太短的句子提升不明显
-        "return_fragment": False,        # 不启用流式返回
+        "split_bucket": False,  # 数据分桶会降低计算量,太短的句子提升不明显
+        "return_fragment": False,  # 不启用流式返回
     }
     return tts_pipline.run(inputs)
+
 
 # ------------------------------------
 # 管理模型
@@ -93,7 +96,9 @@ class ModelBasicInfo:
     refer_text: str
     refer_text_language: str
 
-    def __init__(self, gpt_path: str, sovits_path: str, refer_wav_path: str, refer_text: str):
+    def __init__(
+        self, gpt_path: str, sovits_path: str, refer_wav_path: str, refer_text: str
+    ):
         self.gpt_path = gpt_path
         self.sovits_path = sovits_path
         self.refer_wav_path = refer_wav_path
@@ -106,7 +111,8 @@ class ModelBasicInfo:
             self.refer_text_language, self.refer_text = parts
         else:
             raise ValueError(
-                f"Invalid format in {refer_text}. Expected format: 'language|text'.")
+                f"Invalid format in {refer_text}. Expected format: 'language|text'."
+            )
 
 
 def search_models(root_dir: str) -> Dict[str, ModelBasicInfo]:
@@ -121,17 +127,21 @@ def search_models(root_dir: str) -> Dict[str, ModelBasicInfo]:
                 refer_text_path = os.path.join(root, "reference_audio.lab")
 
                 # 检查参考音频文件是否存在
-                if not os.path.exists(refer_wav_path) or not os.path.exists(refer_text_path):
+                if not os.path.exists(refer_wav_path) or not os.path.exists(
+                    refer_text_path
+                ):
                     logging.warning(
-                        f"Model '{model_folder}' is missing reference audio files.")
+                        f"Model '{model_folder}' is missing reference audio files."
+                    )
                     continue
 
                 # 假设参考文本文件是纯文本文件，直接读取内容
-                with open(refer_text_path, 'r') as f:
+                with open(refer_text_path, "r") as f:
                     refer_text = f.read()
 
                 model_info[model_folder] = ModelBasicInfo(
-                    gpt_path, sovits_path, refer_wav_path, refer_text)
+                    gpt_path, sovits_path, refer_wav_path, refer_text
+                )
     except Exception as e:
         raise Exception(f"some thing erorr on {model_folder}:{e}")
 
@@ -139,7 +149,7 @@ def search_models(root_dir: str) -> Dict[str, ModelBasicInfo]:
 
 
 # 使用os.getenv获取环境变量MODEL_FOLDER的值，如果未设置，则默认为"/root/autodl-tmp/"
-model_folder = os.getenv('MODEL_FOLDER', "/root/autodl-tmp/models/")
+model_folder = os.getenv("MODEL_FOLDER", "/root/autodl-tmp/models/")
 model_infos = search_models(model_folder)
 
 # 找到本地所有模型
@@ -152,6 +162,7 @@ def list_models() -> List[str]:
     global model_infos
     model_infos = search_models(model_folder)
     return list(model_infos.keys())
+
 
 # # 初始化模型
 # model_name = random.choice(list_models())
@@ -199,7 +210,7 @@ jokes = [
     "为什么程序员总是饿着肚子？因为他们喜欢“循环”。",
     "为什么程序员喜欢猫？因为它们有九条“线程”。",
     "为什么程序员不喜欢赌博？因为他们不喜欢“风险”。",
-    "为什么程序员不喜欢打电话？因为他们害怕“接口”。"
+    "为什么程序员不喜欢打电话？因为他们害怕“接口”。",
 ]
 
 
@@ -208,7 +219,7 @@ performance_stats = {}  # 存储性能统计信息
 batch_sizes = [1, 8, 16, 32, 64]  # 不同的 batch_size 值
 
 
-def run_inference(batch_size:int, model_name:str):
+def run_inference(batch_size: int, model_name: str):
     model_info = model_infos[model_name]
     total_time = 0
     min_time = float("inf")
@@ -225,12 +236,14 @@ def run_inference(batch_size:int, model_name:str):
     for i in range(16):
         start_time = time.time()
         # 以下是原来的代码
-        gen = inference(text=jokes[i % len(jokes)],
-                        text_lang='zh',
-                        ref_audio_path=model_info.refer_wav_path,
-                        prompt_text=model_info.refer_text,
-                        prompt_lang=model_info.refer_text_language,
-                        batch_size=batch_size)
+        gen = inference(
+            text=jokes[i % len(jokes)],
+            text_lang="zh",
+            ref_audio_path=model_info.refer_wav_path,
+            prompt_text=model_info.refer_text,
+            prompt_lang=model_info.refer_text_language,
+            batch_size=batch_size,
+        )
 
         sampling_rate, audio_data = next(gen)
         wav_io = BytesIO()
@@ -253,19 +266,19 @@ def run_inference(batch_size:int, model_name:str):
     performance_stats[batch_size][model_name] = {
         "average_time": average_time,
         "min_time": min_time,
-        "max_time": max_time
+        "max_time": max_time,
     }
 
 
 all_model_names = list_models()
 for batch_size in batch_sizes:
     for model_name in all_model_names:
-        run_inference(batch_size=batch_size,
-                      model_name=model_name)
+        run_inference(batch_size=batch_size, model_name=model_name)
 
 # 输出 Markdown 格式的表格
 print("| Batch Size | 角色 | 平均时间 | 最短时间 | 最长时间 |\n|---|---|---|---|---|")
 for batch_size, model_stats in performance_stats.items():
     for model_name, stats in model_stats.items():
         print(
-            f"| {batch_size} | {model_name} | {stats['average_time']} | {stats['min_time']} | {stats['max_time']} |")
+            f"| {batch_size} | {model_name} | {stats['average_time']} | {stats['min_time']} | {stats['max_time']} |"
+        )
