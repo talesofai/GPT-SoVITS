@@ -47,14 +47,14 @@ if __name__ == "__main__":
     speaker_name = random.choice(support_voice_info)
     print(f"Supported voice models: {support_voice_info}\n choise: {speaker_name}")
 
-    # 调用生成音频的任务
+    # 调用生成音频的任务(async)
     audio_result = run_celery_task(
         celery_app=celery_app,
         task_name="async/gpt_sovits_generate_voice",
         queue_name="async/GPTSoVits",
         raw={
-            "task_id": "123",
-            "callback_url": "",
+            "task_uuid": "123",
+            "callback_url": "http://baidu.com",
             "speaker": speaker_name,
             "language": "zh",
             "text": "你说的对，但是《原神》是由米哈游自主研发的一款全新开放世界冒险游戏",
@@ -62,6 +62,25 @@ if __name__ == "__main__":
     )
 
     print(audio_result)
+
+    # 调用生成音频的任务(sync)
+    audio_result = run_celery_task(
+        celery_app=celery_app,
+        task_name="gpt_sovits_generate_voice",
+        queue_name="async/GPTSoVits",
+        speaker_name=speaker_name,
+        text="你说的对，但是《原神》是由米哈游自主研发的一款全新开放世界冒险游戏",
+        language="zh",
+    )
+
+    # 检测返回的结果是否为二进制文件
+    if isinstance(audio_result, bytes):
+        print("Voice generated successfully!")
+        # 处理二进制音频文件，例如保存到文件或进行其他处理
+        with open("output.wav", "wb") as audio_file:
+            audio_file.write(audio_result)
+    else:
+        print(f"Failed to generate voice. Error message: {audio_result}")
 
     # 检测返回的结果是否为二进制文件
     # if isinstance(audio_result, bytes):

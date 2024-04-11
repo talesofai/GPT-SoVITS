@@ -24,7 +24,7 @@ class TaskResult(pydantic.BaseModel):
 
 
 class OfficalSpeakerTTSRequest(pydantic.BaseModel):
-    task_id: str
+    task_uuid: str
     callback_url: Optional[str] = None
     speaker: str
     language: str
@@ -34,6 +34,13 @@ class OfficalSpeakerTTSRequest(pydantic.BaseModel):
 async def request_callback(method: str, url: str, **kwargs):
     async with request(method, url, **kwargs) as resp:
         return resp.ok
+
+
+def sync_callback(method: str, url: str, **kwargs):
+    try:
+        return asyncio.run(request_callback(method, url, **kwargs))
+    except Exception as e:
+        print(e)
 
 
 @celery_app.task(name="async/gpt_sovits_generate_voice", bind=True, time_limit=20)
@@ -65,17 +72,60 @@ def celery_generate_voice(task: Task, raw: dict):
         hash_str = hashlib.md5(audio_bytes).hexdigest()
         key = f"tts/task/{hash_str}"
         url = put_object(key, audio_bytes)
-        try:
-            if req.callback_url is not None:
-                cb = request_callback(
-                    "POST",
-                    req.callback_url,
-                    json={"task_id": req.task_id, "url": url},
-                )
-                asyncio.run(cb)
-        except Exception as e:
-            print(e)
+        if req.callback_url is not None:
+            sync_callback(
+                "POST",
+                req.callback_url,
+                json={"success": True, "task_uuid": req.task_uuid, "url": url},
+            )
         return url
+    except Exception as e:
+        e = str(e)
+        if req.callback_url is not None:
+            sync_callback(
+                "POST",
+                req.callback_url,
+                json={"success": False, "task_uuid": req.task_uuid, "message": e},
+            )
+        return TaskResult(
+            code=500, message=f"Failed to generate voice: {e}"
+        ).model_dump()
+
+
+@celery_app.task(name="gpt_sovits_generate_voice", bind=True, time_limit=20)
+def celery_generate_voice(self, speaker_name: str, text: str, language: str):
+    """合成语音
+
+    Args:
+        speaker_name (str): 角色名称
+        text (str): 文本内容
+        language (str): 语言
+
+    Returns:
+        _type_: mp3二进制数据或者Dict错误信息
+    """
+
+    # 增加speaker_name的检测逻辑
+    if not isinstance(speaker_name, str) or len(speaker_name) == 0:
+        return TaskResult(
+            code=400, message="Invalid speaker name provided"
+        ).model_dump()
+
+    if speaker_name not in model_names:
+        return TaskResult(
+            code=404,
+            message=f"Not found {speaker_name}.pls choise one from {model_names}",
+        ).model_dump()
+
+    # 增加language检测逻辑，只允许 ja|zh|en|auto 这四种情况
+    if language not in ["ja", "zh", "en", "auto"]:
+        language = "auto"
+    # 合成音频
+    try:
+        audio_bytes = generate_voice(
+            model=speaker_name, text=text, text_language=language
+        )
+        return audio_bytes
     except Exception as e:
         return TaskResult(
             code=500, message=f"Failed to generate voice: {str(e)}"
