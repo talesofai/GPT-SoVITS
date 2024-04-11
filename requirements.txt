@@ -26,5 +26,8 @@ jieba
 LangSegment>=0.2.0
 Faster_Whisper
 
+# neta requirements
 celery
 redis
+aiohttp
+asgiref

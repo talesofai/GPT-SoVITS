@@ -3,11 +3,12 @@
 # 数组用于存储PID
 pids=()
 
+# 从网盘加载模型
 export MODEL_FOLDER=/root/autodl-fs/wys_data/gpt_sovits/models/
 
 # 启动2个实例并记录PID
 for i in {1..2}; do
-  celery -A AudioProcessCeleryWorker worker -l WARNING -c 1 --pool=solo -Q GPTSoVits &
+  celery -A AudioProcessCeleryWorker worker -l WARNING -c 1 --pool=solo -Q async/GPTSoVits &
   pids+=($!)
 done
 
@@ -17,7 +18,7 @@ restart_instances() {
     kill -0 "$pid" 2>/dev/null
     if [ $? -ne 0 ]; then
       echo "Restarting instance with PID: $pid"
-      celery -A AudioProcessCeleryWorker worker -l WARNING -c 1 --pool=solo -Q GPTSoVits &
+      celery -A AudioProcessCeleryWorker worker -l WARNING -c 1 --pool=solo -Q async/GPTSoVits &
       pids=("${pids[@]/$pid/}")
       pids+=($!)
     fi

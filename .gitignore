@@ -22,3 +22,6 @@ venv/
 output
 audio_output
 .ipynb_checkpoints
+
+# neta ignore
+.env
