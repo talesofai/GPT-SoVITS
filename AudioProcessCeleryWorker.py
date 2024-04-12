@@ -8,7 +8,8 @@ from celery import Task
 import hashlib
 from aliyun_oss import put_object
 from typing import Optional
-
+from functools import partial
+from base64 import b64encode
 
 logging.basicConfig(level=logging.INFO)
 
@@ -25,10 +26,11 @@ class TaskResult(pydantic.BaseModel):
 
 class OfficalSpeakerTTSRequest(pydantic.BaseModel):
     task_uuid: str
-    callback_url: Optional[str] = None
+    callback_url: str
     speaker: str
     language: str
     text: str
+    format: str
 
 
 async def request_callback(method: str, url: str, **kwargs):
@@ -44,7 +46,7 @@ def sync_callback(method: str, url: str, **kwargs):
 
 
 @celery_app.task(name="async/gpt_sovits_generate_voice", bind=True, time_limit=20)
-def celery_generate_voice(task: Task, raw: dict):
+def celery_async_generate_voice(task: Task, raw: dict):
     """合成语音, 成功则上传到oss
 
     Returns:
@@ -55,11 +57,27 @@ def celery_generate_voice(task: Task, raw: dict):
     except pydantic.ValidationError as e:
         return TaskResult(code=400, message=e.json()).model_dump()
 
+    respond = partial(sync_callback, method="POST", url=req.callback_url)
+
+    if req.format not in ["oss_url", "base64"]:
+        respond(
+            json={
+                "success": False,
+                "task_uuid": req.task_uuid,
+                "message": "format is not supported",
+            },
+        )
+        return False
+
     if req.speaker not in model_names:
-        return TaskResult(
-            code=404,
-            message=f"Not found {req.speaker}.pls choise one from {model_names}",
-        ).model_dump()
+        respond(
+            json={
+                "success": False,
+                "task_uuid": req.task_uuid,
+                "message": f"Not found {req.speaker}.pls choise one from {model_names}",
+            },
+        )
+        return False
 
     language = req.language
     language = language if language in ["ja", "zh", "en", "auto"] else "auto"
@@ -69,27 +87,25 @@ def celery_generate_voice(task: Task, raw: dict):
         audio_bytes = generate_voice(
             model=req.speaker, text=req.text, text_language=language
         )
-        hash_str = hashlib.md5(audio_bytes).hexdigest()
-        key = f"tts/task/{hash_str}"
-        url = put_object(key, audio_bytes)
-        if req.callback_url is not None:
-            sync_callback(
-                "POST",
-                req.callback_url,
-                json={"success": True, "task_uuid": req.task_uuid, "url": url},
+        if req.format == "base64":
+            encoded = b64encode(audio_bytes).decode("utf-8")
+            respond(
+                json={"success": True, "task_uuid": req.task_uuid, "base64": encoded},
             )
-        return url
+        elif req.format == "oss_url":
+            hash_str = hashlib.md5(audio_bytes).hexdigest()
+            key = f"tts/task/{hash_str}"
+            oss_url = put_object(key, audio_bytes)
+            respond(
+                json={"success": True, "task_uuid": req.task_uuid, "oss_url": oss_url},
+            )
+        return True
     except Exception as e:
         e = str(e)
-        if req.callback_url is not None:
-            sync_callback(
-                "POST",
-                req.callback_url,
-                json={"success": False, "task_uuid": req.task_uuid, "message": e},
-            )
-        return TaskResult(
-            code=500, message=f"Failed to generate voice: {e}"
-        ).model_dump()
+        respond(
+            json={"success": False, "task_uuid": req.task_uuid, "message": e},
+        )
+        return False
 
 
 @celery_app.task(name="gpt_sovits_generate_voice", bind=True, time_limit=20)
