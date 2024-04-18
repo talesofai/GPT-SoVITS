@@ -2,6 +2,27 @@ import logging
 from celery import Celery
 from celery_utils import make_celery
 import random
+from fastapi import FastAPI
+from pydantic import BaseModel
+from typing import Optional
+
+class TTSCallbackDto(BaseModel):
+    success: bool
+    task_uuid: str
+    base64: Optional[str] = None
+    oss_url: Optional[str] = None
+    message: Optional[str] = None
+
+test_app = FastAPI()
+
+@test_app.post("/callback")
+async def test_tts_callback(res: TTSCallbackDto):
+    print(res)
+    return
+
+def start_callback_server():
+    import uvicorn
+    uvicorn.run(test_app, host="127.0.0.1", port=8123)
 
 
 def run_celery_task(celery_app, task_name, timeout=10, queue_name="default", **kwargs):
@@ -29,7 +50,12 @@ def run_celery_task(celery_app, task_name, timeout=10, queue_name="default", **k
 if __name__ == "__main__":
 
     logging.basicConfig(level=logging.INFO)
-
+    
+    from threading import Thread
+    
+    svr = Thread(target=start_callback_server)
+    svr.start()
+    
     # 创建Celery 实例
     celery_app: Celery = make_celery()
 
@@ -54,10 +80,11 @@ if __name__ == "__main__":
         queue_name="async/GPTSoVits",
         raw={
             "task_uuid": "123",
-            "callback_url": "http://baidu.com",
+            "callback_url": "http://localhost:8123/callback",
             "speaker": speaker_name,
             "language": "zh",
             "text": "你说的对，但是《原神》是由米哈游自主研发的一款全新开放世界冒险游戏",
+            "format": "base64"
         },
     )
 

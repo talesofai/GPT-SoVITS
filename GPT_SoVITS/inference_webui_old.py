@@ -528,8 +528,8 @@ def change_choices():
     return {"choices": sorted(SoVITS_names, key=custom_sort_key), "__type__": "update"}, {"choices": sorted(GPT_names, key=custom_sort_key), "__type__": "update"}
 
 
-pretrained_sovits_name = "GPT_SoVITS/pretrained_models/s2G488k.pth"
-pretrained_gpt_name = "GPT_SoVITS/pretrained_models/s1bert25hz-2kh-longer-epoch=68e-step=50232.ckpt"
+#pretrained_sovits_name = "GPT_SoVITS/pretrained_models/s2G488k.pth"
+#pretrained_gpt_name = "GPT_SoVITS/pretrained_models/s1bert25hz-2kh-longer-epoch=68e-step=50232.ckpt"
 SoVITS_weight_root = "SoVITS_weights"
 GPT_weight_root = "GPT_weights"
 os.makedirs(SoVITS_weight_root, exist_ok=True)
@@ -537,10 +537,12 @@ os.makedirs(GPT_weight_root, exist_ok=True)
 
 
 def get_weights_names():
-    SoVITS_names = [pretrained_sovits_name]
+    #SoVITS_names = [pretrained_sovits_name]
+    SoVITS_names=[]
     for name in os.listdir(SoVITS_weight_root):
         if name.endswith(".pth"): SoVITS_names.append("%s/%s" % (SoVITS_weight_root, name))
-    GPT_names = [pretrained_gpt_name]
+    #GPT_names = [pretrained_gpt_name]
+    GPT_names=[]
     for name in os.listdir(GPT_weight_root):
         if name.endswith(".ckpt"): GPT_names.append("%s/%s" % (GPT_weight_root, name))
     return SoVITS_names, GPT_names

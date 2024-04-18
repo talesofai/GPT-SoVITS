@@ -25,3 +25,4 @@ audio_output
 
 # neta ignore
 .env
+nohup.out
